@@ -1,0 +1,8 @@
+{
+  "rifa": "Su Suerte El Socio",
+  "tickets": [
+    { "number": "0000", "status": "available", "buyer": "" },
+    { "number": "0001", "status": "available", "buyer": "" },
+    { "number": "0002", "status": "available", "buyer": "" }
+  ]
+}
