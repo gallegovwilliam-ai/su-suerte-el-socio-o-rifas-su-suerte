@@ -1,4 +1,4 @@
-JavaScript
+
 const archivo = document.getElementById("archivo");
 const buscar = document.getElementById("buscar");
 const numerosDiv = document.getElementById("numeros");
