@@ -1,6 +1,6 @@
-// ID de tu Google Sheet
-const SPREADSHEET_ID = '1lN2CFy7aPlprmtiufaXcOv_lAfZtFcpt4dFqmsZOt_g';
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+
+// URL de publicación en la Web de tu Google Sheet
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTx3ofaEsx5VvKJyfc7m709ObhI1AHG8zEHC6ppxrIKyG0tHKgT5K17pytj-th9YmGtBA6eZK-DiHmX/pub?output=csv';
 
 let numerosData = [];
 let seleccionados = [];
@@ -11,32 +11,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function cargarDatosDesdeGoogleSheets() {
     fetch(SHEET_URL)
-        .then(response => response.text())
-        .then(data => {
-            const jsonString = data.substring(47, data.length - 2);
-            const json = JSON.parse(jsonString);
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Error al conectar con la hoja publicada');
+            }
+            return response.text();
+        })
+        .then(csvText => {
+            const filas = csvText.split('\n');
             
-            const filas = json.table.rows;
-            numerosData = filas.map((row, index) => {
-                let num = row.c[0] ? String(row.c[0].v) : String(index);
-                let estado = row.c[1] ? String(row.c[1].v) : 'Disponible';
+            numerosData = filas.map((rowStr, index) => {
+                if (!rowStr.trim()) return null;
+                
+                const columnas = rowStr.split(',');
+                let numStr = columnas[0] ? columnas[0].replace(/"/g, '').trim() : String(index);
+                let estadoStr = columnas[1] ? columnas[1].replace(/"/g, '').trim() : 'disponible';
+                
+                // Omitir la fila de encabezados (Numero, Estado)
+                if (numStr.toLowerCase() === 'numero' || numStr.toLowerCase() === 'número') {
+                    return null;
+                }
+
+                // Asegurar formato de 4 dígitos (completando ceros a la izquierda)
+                if (!isNaN(numStr) && numStr.length < 4) {
+                    numStr = numStr.padStart(4, '0');
+                }
+
                 return {
-                    numero: num.padStart(4, '0'),
-                    estado: estado
+                    numero: numStr,
+                    estado: estadoStr
                 };
-            });
-            
+            }).filter(item => item !== null);
+
             renderGrid(numerosData);
             actualizarContadores();
         })
         .catch(error => {
-            console.error('Error al cargar Google Sheets:', error);
+            console.error('Error al cargar datos de Google Sheets:', error);
         });
 }
 
 function renderGrid(data) {
-    const gridContainer = document.getElementById('grid') || document.querySelector('.row.g-2') || document.getElementById('gridContainer');
-    if (!gridContainer) return;
+    let gridContainer = document.getElementById('grid') || 
+                        document.getElementById('gridContainer') || 
+                        document.querySelector('.row.g-2') || 
+                        document.querySelector('.numbers-container') ||
+                        document.querySelector('.container .row');
+
+    if (!gridContainer) {
+        gridContainer = document.createElement('div');
+        gridContainer.id = 'gridContainer';
+        gridContainer.className = 'd-flex flex-wrap justify-content-center';
+        document.body.appendChild(gridContainer);
+    }
 
     gridContainer.innerHTML = '';
 
@@ -51,11 +78,11 @@ function renderGrid(data) {
         const estado = item.estado.toLowerCase();
 
         if (estado === 'vendido') {
-            btn.classList.add('btn-danger', 'disabled');
+            btn.className = 'btn btn-danger m-1 disabled';
         } else if (seleccionados.includes(item.numero)) {
-            btn.classList.add('btn-warning');
+            btn.className = 'btn btn-warning m-1';
         } else {
-            btn.classList.add('btn-outline-secondary');
+            btn.className = 'btn btn-outline-secondary m-1';
         }
 
         btn.addEventListener('click', () => toggleSeleccion(item.numero));
