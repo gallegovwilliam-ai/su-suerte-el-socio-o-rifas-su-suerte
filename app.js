@@ -1,12 +1,15 @@
-
-// URL de publicación en la Web de tu Google Sheet
+// URL de publicación en la Web de tu Google Sheet (CSV)
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTx3ofaEsx5VvKJyfc7m709ObhI1AHG8zEHC6ppxrIKyG0tHKgT5K17pytj-th9YmGtBA6eZK-DiHmX/pub?output=csv';
+
+// Número de WhatsApp para recibir los pedidos (sin espacios ni el símbolo +)
+const TELEFONO_WHATSAPP = '59167723609';
 
 let numerosData = [];
 let seleccionados = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     cargarDatosDesdeGoogleSheets();
+    crearBotonWhatsApp();
 });
 
 function cargarDatosDesdeGoogleSheets() {
@@ -27,12 +30,10 @@ function cargarDatosDesdeGoogleSheets() {
                 let numStr = columnas[0] ? columnas[0].replace(/"/g, '').trim() : String(index);
                 let estadoStr = columnas[1] ? columnas[1].replace(/"/g, '').trim() : 'disponible';
                 
-                // Omitir la fila de encabezados (Numero, Estado)
                 if (numStr.toLowerCase() === 'numero' || numStr.toLowerCase() === 'número') {
                     return null;
                 }
 
-                // Asegurar formato de 4 dígitos (completando ceros a la izquierda)
                 if (!isNaN(numStr) && numStr.length < 4) {
                     numStr = numStr.padStart(4, '0');
                 }
@@ -80,7 +81,7 @@ function renderGrid(data) {
         if (estado === 'vendido') {
             btn.className = 'btn btn-danger m-1 disabled';
         } else if (seleccionados.includes(item.numero)) {
-            btn.className = 'btn btn-warning m-1';
+            btn.className = 'btn btn-warning m-1fw-bold';
         } else {
             btn.className = 'btn btn-outline-secondary m-1';
         }
@@ -99,6 +100,7 @@ function toggleSeleccion(numero) {
     }
     renderGrid(numerosData);
     actualizarContadores();
+    actualizarBotonWhatsApp();
 }
 
 function actualizarContadores() {
@@ -114,4 +116,43 @@ function actualizarContadores() {
     if (elDisp) elDisp.innerText = disponibles;
     if (elSel) elSel.innerText = seleccionadosCount;
     if (elVen) elVen.innerText = vendidos;
+}
+
+function crearBotonWhatsApp() {
+    let btnWsp = document.getElementById('btnWhatsAppFloating');
+    if (!btnWsp) {
+        btnWsp = document.createElement('a');
+        btnWsp.id = 'btnWhatsAppFloating';
+        btnWsp.target = '_blank';
+        btnWsp.style.position = 'fixed';
+        btnWsp.style.bottom = '20px';
+        btnWsp.style.right = '20px';
+        btnWsp.style.backgroundColor = '#25D366';
+        btnWsp.style.color = '#FFF';
+        btnWsp.style.padding = '12px 20px';
+        btnWsp.style.borderRadius = '30px';
+        btnWsp.style.boxShadow = '0px 4px 10px rgba(0,0,0,0.3)';
+        btnWsp.style.fontWeight = 'bold';
+        btnWsp.style.fontSize = '16px';
+        btnWsp.style.textDecoration = 'none';
+        btnWsp.style.zIndex = '9999';
+        btnWsp.style.display = 'none';
+        document.body.appendChild(btnWsp);
+    }
+    actualizarBotonWhatsApp();
+}
+
+function actualizarBotonWhatsApp() {
+    const btnWsp = document.getElementById('btnWhatsAppFloating');
+    if (!btnWsp) return;
+
+    if (seleccionados.length > 0) {
+        const numerosTexto = seleccionados.join(', ');
+        const mensaje = encodeURIComponent(`Hola, deseo apartar los siguientes números para el sorteo: ${numerosTexto}`);
+        btnWsp.href = `https://wa.me/${TELEFONO_WHATSAPP}?text=${mensaje}`;
+        btnWsp.innerHTML = `📲 Apartar (${seleccionados.length}) por WhatsApp`;
+        btnWsp.style.display = 'block';
+    } else {
+        btnWsp.style.display = 'none';
+    }
 }
