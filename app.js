@@ -157,19 +157,21 @@ function enviarYGuardarEnGoogleSheets() {
     const mensaje = encodeURIComponent(`Hola, deseo apartar los siguientes números para el sorteo: ${numerosTexto}`);
     const whatsappUrl = `https://wa.me/${TELEFONO_WHATSAPP}?text=${mensaje}`;
 
-    // 1. Guardar automáticamente el estado "vendido" en tu Google Sheet
+    // Envío de datos a Google Apps Script
     fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ numeros: seleccionados })
-    }).catch(err => console.error('Error enviando datos:', err));
+    })
+    .then(() => console.log('Enviado a Google Sheets'))
+    .catch(err => console.error('Error enviando datos:', err));
 
-    // 2. Redirigir a WhatsApp
+    // Abrir WhatsApp
     window.open(whatsappUrl, '_blank');
 
-    // 3. Limpiar selección y refrescar interfaz local
+    // Limpiar selección local y actualizar pantalla
     seleccionados = [];
     actualizarBotonWhatsApp();
-    setTimeout(cargarDatosDesdeGoogleSheets, 2500);
+    setTimeout(cargarDatosDesdeGoogleSheets, 3000);
 }
