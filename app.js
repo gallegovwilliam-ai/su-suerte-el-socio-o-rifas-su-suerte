@@ -1,7 +1,7 @@
 // URL de publicación en la Web de tu Google Sheet (CSV)
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTx3ofaEsx5VvKJyfc7m709ObhI1AHG8zEHC6ppxrIKyG0tHKgT5K17pytj-th9YmGtBA6eZK-DiHmX/pub?output=csv';
 
-// Número de WhatsApp para recibir los pedidos (sin espacios ni el símbolo +)
+// Número de WhatsApp para recibir los pedidos (sin + ni espacios)
 const TELEFONO_WHATSAPP = '59167723609';
 
 let numerosData = [];
@@ -79,14 +79,27 @@ function renderGrid(data) {
         const estado = item.estado.toLowerCase();
 
         if (estado === 'vendido') {
+            // ROJO: Ya vendido y pagado
             btn.className = 'btn btn-danger m-1 disabled';
+            btn.title = 'Vendido';
+        } else if (estado === 'apartado' || estado === 'reservado' || estado === 'ocupado') {
+            // NARANJA: Apartado previamente por otro usuario (no interactivo)
+            btn.className = 'btn btn-warning m-1 disabled';
+            btn.style.backgroundColor = '#ff9800';
+            btn.style.borderColor = '#e68a00';
+            btn.style.color = '#fff';
+            btn.title = 'Apartado por otro usuario';
         } else if (seleccionados.includes(item.numero)) {
-            btn.className = 'btn btn-warning m-1fw-bold';
+            // AZUL / VERDE LIMA: Seleccionado en este momento por el usuario actual
+            btn.className = 'btn btn-success m-1 fw-bold';
+            btn.style.backgroundColor = '#28a745';
+            btn.style.color = '#fff';
         } else {
+            // GRIS: Disponible
             btn.className = 'btn btn-outline-secondary m-1';
+            btn.addEventListener('click', () => toggleSeleccion(item.numero));
         }
 
-        btn.addEventListener('click', () => toggleSeleccion(item.numero));
         gridContainer.appendChild(btn);
     });
 }
@@ -106,8 +119,9 @@ function toggleSeleccion(numero) {
 function actualizarContadores() {
     const total = numerosData.length;
     const vendidos = numerosData.filter(i => i.estado.toLowerCase() === 'vendido').length;
+    const apartados = numerosData.filter(i => ['apartado', 'reservado', 'ocupado'].includes(i.estado.toLowerCase())).length;
     const seleccionadosCount = seleccionados.length;
-    const disponibles = total - vendidos - seleccionadosCount;
+    const disponibles = total - vendidos - apartados - seleccionadosCount;
 
     const elDisp = document.getElementById('disponibles') || document.querySelector('.card-body h3');
     const elSel = document.getElementById('seleccionados');
