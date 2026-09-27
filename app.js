@@ -19,7 +19,7 @@ function cargarDatosDesdeGoogleSheets() {
             const filas = json.table.rows;
             numerosData = filas.map((row, index) => {
                 let num = row.c[0] ? String(row.c[0].v) : String(index);
-                let estado = row.c[1] ? String(row.c[1].v) : 'disponible';
+                let estado = row.c[1] ? String(row.c[1].v) : 'Disponible';
                 return {
                     numero: num.padStart(4, '0'),
                     estado: estado
