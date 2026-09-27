@@ -1,5 +1,8 @@
-// URL de publicación en la Web de tu Google Sheet (CSV)
+// URL de publicación en la Web de tu Google Sheet (Lectura de datos)
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTx3ofaEsx5VvKJyfc7m709ObhI1AHG8zEHC6ppxrIKyG0tHKgT5K17pytj-th9YmGtBA6eZK-DiHmX/pub?output=csv';
+
+// URL de tu Google Apps Script (Escritura de datos)
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwjw-89xBPNckbtGHDQ8LUmN5hwdo4JDLM1OwIOl97d8zuD43Uk2GVuFcURXRZ8DnE/exec'; 
 
 // Número de WhatsApp para recibir los pedidos (sin + ni espacios)
 const TELEFONO_WHATSAPP = '59167723609';
@@ -14,42 +17,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function cargarDatosDesdeGoogleSheets() {
     fetch(SHEET_URL)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al conectar con la hoja publicada');
-            }
-            return response.text();
-        })
+        .then(response => response.text())
         .then(csvText => {
             const filas = csvText.split('\n');
-            
             numerosData = filas.map((rowStr, index) => {
                 if (!rowStr.trim()) return null;
-                
                 const columnas = rowStr.split(',');
                 let numStr = columnas[0] ? columnas[0].replace(/"/g, '').trim() : String(index);
                 let estadoStr = columnas[1] ? columnas[1].replace(/"/g, '').trim() : 'disponible';
                 
-                if (numStr.toLowerCase() === 'numero' || numStr.toLowerCase() === 'número') {
-                    return null;
-                }
+                if (numStr.toLowerCase() === 'numero' || numStr.toLowerCase() === 'número') return null;
+                if (!isNaN(numStr) && numStr.length < 4) numStr = numStr.padStart(4, '0');
 
-                if (!isNaN(numStr) && numStr.length < 4) {
-                    numStr = numStr.padStart(4, '0');
-                }
-
-                return {
-                    numero: numStr,
-                    estado: estadoStr
-                };
+                return { numero: numStr, estado: estadoStr };
             }).filter(item => item !== null);
 
             renderGrid(numerosData);
             actualizarContadores();
         })
-        .catch(error => {
-            console.error('Error al cargar datos de Google Sheets:', error);
-        });
+        .catch(error => console.error('Error al cargar datos:', error));
 }
 
 function renderGrid(data) {
@@ -79,23 +65,18 @@ function renderGrid(data) {
         const estado = item.estado.toLowerCase();
 
         if (estado === 'vendido') {
-            // ROJO: Ya vendido y pagado
             btn.className = 'btn btn-danger m-1 disabled';
             btn.title = 'Vendido';
-        } else if (estado === 'apartado' || estado === 'reservado' || estado === 'ocupado') {
-            // NARANJA: Apartado previamente por otro usuario (no interactivo)
+        } else if (estado === 'apartado' || estado === 'reservado') {
             btn.className = 'btn btn-warning m-1 disabled';
             btn.style.backgroundColor = '#ff9800';
-            btn.style.borderColor = '#e68a00';
             btn.style.color = '#fff';
-            btn.title = 'Apartado por otro usuario';
+            btn.title = 'Apartado previa selección';
         } else if (seleccionados.includes(item.numero)) {
-            // AZUL / VERDE LIMA: Seleccionado en este momento por el usuario actual
             btn.className = 'btn btn-success m-1 fw-bold';
             btn.style.backgroundColor = '#28a745';
             btn.style.color = '#fff';
         } else {
-            // GRIS: Disponible
             btn.className = 'btn btn-outline-secondary m-1';
             btn.addEventListener('click', () => toggleSeleccion(item.numero));
         }
@@ -119,7 +100,7 @@ function toggleSeleccion(numero) {
 function actualizarContadores() {
     const total = numerosData.length;
     const vendidos = numerosData.filter(i => i.estado.toLowerCase() === 'vendido').length;
-    const apartados = numerosData.filter(i => ['apartado', 'reservado', 'ocupado'].includes(i.estado.toLowerCase())).length;
+    const apartados = numerosData.filter(i => ['apartado', 'reservado'].includes(i.estado.toLowerCase())).length;
     const seleccionadosCount = seleccionados.length;
     const disponibles = total - vendidos - apartados - seleccionadosCount;
 
@@ -135,22 +116,23 @@ function actualizarContadores() {
 function crearBotonWhatsApp() {
     let btnWsp = document.getElementById('btnWhatsAppFloating');
     if (!btnWsp) {
-        btnWsp = document.createElement('a');
+        btnWsp = document.createElement('button');
         btnWsp.id = 'btnWhatsAppFloating';
-        btnWsp.target = '_blank';
         btnWsp.style.position = 'fixed';
         btnWsp.style.bottom = '20px';
         btnWsp.style.right = '20px';
         btnWsp.style.backgroundColor = '#25D366';
         btnWsp.style.color = '#FFF';
+        btnWsp.style.border = 'none';
         btnWsp.style.padding = '12px 20px';
         btnWsp.style.borderRadius = '30px';
         btnWsp.style.boxShadow = '0px 4px 10px rgba(0,0,0,0.3)';
         btnWsp.style.fontWeight = 'bold';
         btnWsp.style.fontSize = '16px';
-        btnWsp.style.textDecoration = 'none';
+        btnWsp.style.cursor = 'pointer';
         btnWsp.style.zIndex = '9999';
         btnWsp.style.display = 'none';
+        btnWsp.addEventListener('click', enviarYGuardarEnGoogleSheets);
         document.body.appendChild(btnWsp);
     }
     actualizarBotonWhatsApp();
@@ -161,12 +143,33 @@ function actualizarBotonWhatsApp() {
     if (!btnWsp) return;
 
     if (seleccionados.length > 0) {
-        const numerosTexto = seleccionados.join(', ');
-        const mensaje = encodeURIComponent(`Hola, deseo apartar los siguientes números para el sorteo: ${numerosTexto}`);
-        btnWsp.href = `https://wa.me/${TELEFONO_WHATSAPP}?text=${mensaje}`;
         btnWsp.innerHTML = `📲 Apartar (${seleccionados.length}) por WhatsApp`;
         btnWsp.style.display = 'block';
     } else {
         btnWsp.style.display = 'none';
     }
+}
+
+function enviarYGuardarEnGoogleSheets() {
+    if (seleccionados.length === 0) return;
+
+    const numerosTexto = seleccionados.join(', ');
+    const mensaje = encodeURIComponent(`Hola, deseo apartar los siguientes números para el sorteo: ${numerosTexto}`);
+    const whatsappUrl = `https://wa.me/${TELEFONO_WHATSAPP}?text=${mensaje}`;
+
+    // 1. Guardar automáticamente el estado "vendido" en tu Google Sheet
+    fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ numeros: seleccionados })
+    }).catch(err => console.error('Error enviando datos:', err));
+
+    // 2. Redirigir a WhatsApp
+    window.open(whatsappUrl, '_blank');
+
+    // 3. Limpiar selección y refrescar interfaz local
+    seleccionados = [];
+    actualizarBotonWhatsApp();
+    setTimeout(cargarDatosDesdeGoogleSheets, 2500);
 }
